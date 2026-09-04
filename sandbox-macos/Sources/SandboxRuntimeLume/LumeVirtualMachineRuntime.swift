@@ -1,5 +1,6 @@
 import Foundation
 import SandboxCore
+import SandboxNetworkGateway
 import SandboxRuntime
 
 package actor LumeVirtualMachineRuntime: SandboxVirtualMachineRuntime {
@@ -29,6 +30,13 @@ package actor LumeVirtualMachineRuntime: SandboxVirtualMachineRuntime {
     /// reference requests a cooperative stop. Retaining the process here would
     /// silently stop `runningProcesses.removeValue` from being teardown.
     var guestChannels: [String: AdoptedGuestChannel] = [:]
+
+    /// The packet gateway driving each VM's network, when one was attached.
+    ///
+    /// Cancelled on teardown so a tenant's network dies with its VM. Even if
+    /// this were missed, the loop stops on its own: the execution closes the
+    /// descriptor and the channel reports closed.
+    var networkGateways: [String: Task<Void, Never>] = [:]
 
     package init(
         configuration: LumeRuntimeConfiguration,

@@ -1,5 +1,6 @@
 import Foundation
 import SandboxCore
+import SandboxNetworkGateway
 import SandboxRuntime
 
 /// Adoption of the guest vsock channel Lume patch 0005 hands over.
@@ -173,5 +174,35 @@ extension LumeVirtualMachineRuntime {
     /// teardown path call it unconditionally.
     func releaseGuestChannel(name: String) {
         guestChannels.removeValue(forKey: name)?.client.close()
+        releaseNetworkGateway(name: name)
+    }
+
+    /// Starts the packet gateway for a VM that was given a network descriptor.
+    ///
+    /// Detached because the loop runs for the life of the VM; leaving it on the
+    /// runtime actor would hold that actor forever.
+    func startNetworkGateway(
+        name: String,
+        process: SandboxManagedProcess,
+        policy: EgressPolicy
+    ) {
+        guard networkGateways[name] == nil,
+              let descriptor = process.networkGatewayDescriptor
+        else {
+            return
+        }
+        let loop = GatewayLoop(
+            descriptor: descriptor,
+            gateway: GuestNetworkGateway(policy: policy)
+        )
+        networkGateways[name] = Task.detached(priority: .userInitiated) {
+            await loop.run()
+        }
+    }
+
+    /// Stops a VM's gateway. Safe for a VM that never had one, which is what
+    /// lets every teardown path call it unconditionally.
+    func releaseNetworkGateway(name: String) {
+        networkGateways.removeValue(forKey: name)?.cancel()
     }
 }

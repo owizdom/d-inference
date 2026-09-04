@@ -491,6 +491,13 @@ extension LumeVirtualMachineRuntime {
         }
 
         runningProcesses[name] = process
+        // Start the gateway before readiness: a guest asks for an address the
+        // moment it boots, and nothing answers DHCP until this is running.
+        startNetworkGateway(
+            name: name,
+            process: process,
+            policy: configuration.egressPolicy
+        )
         var unresolvedIntent: LumeVirtualMachineStartIntent.Intent? = intent
         do {
             let running = try await waitForState(

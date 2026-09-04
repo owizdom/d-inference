@@ -1,4 +1,5 @@
 import Foundation
+import SandboxNetworkGateway
 import SandboxRuntime
 
 /// What a tenant VM is allowed to reach.
@@ -160,6 +161,12 @@ public struct LumeRuntimeConfiguration: Sendable {
     /// existed, and because base-image preparation genuinely needs it. The
     /// serve path asks for `.isolated`.
     package let tenantNetworkPolicy: LumeTenantNetworkPolicy
+
+    /// What a tenant may reach once a gateway is attached.
+    ///
+    /// Default-deny, so a host that attaches a gateway without deciding a
+    /// policy reaches nothing rather than everything.
+    package let egressPolicy: EgressPolicy
     public let commandTimeoutSeconds: UInt32
     public let createTimeoutSeconds: UInt32
     public let trustPolicy: LumeRuntimeTrustPolicy
@@ -227,7 +234,8 @@ public struct LumeRuntimeConfiguration: Sendable {
         guestChannelPort: UInt32? = nil,
         guestAgentExecutable: URL? = nil,
         bakeExecutableGuestAgent: Bool = false,
-        tenantNetworkPolicy: LumeTenantNetworkPolicy = .hostNAT
+        tenantNetworkPolicy: LumeTenantNetworkPolicy = .hostNAT,
+        egressPolicy: EgressPolicy = .denyAll
     ) throws {
         guard executable.isFileURL,
               executable.baseURL == nil,
@@ -260,5 +268,6 @@ public struct LumeRuntimeConfiguration: Sendable {
             .resolvingSymlinksInPath()
         self.bakeExecutableGuestAgent = bakeExecutableGuestAgent
         self.tenantNetworkPolicy = tenantNetworkPolicy
+        self.egressPolicy = egressPolicy
     }
 }
